@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Api Conta Azul Extension",
+  "version": "1.0",
+  "description": "Api Conta Azul Chrome Extension for Testing",
+  "permissions": [
+    "identity",
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "web_accessible_resources": [{
+    "resources": ["oauth.html"],
+    "matches": ["<all_urls>"]
+  }]
+}
