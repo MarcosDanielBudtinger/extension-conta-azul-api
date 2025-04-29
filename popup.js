@@ -125,7 +125,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    function showInformationModal(code, redirectUrl, credentials) {
+    async function getInfoToAcess(code) {
+        try {
+            const credentials = await chrome.storage.local.get(['client_id', 'client_secret']);
+            if (!credentials.client_id || !credentials.client_secret) {
+                throw new Error('Client ID or Client Secret not found');
+            }
+            const authString = btoa(`${credentials.client_id}:${credentials.client_secret}`);
+            showInformationModal(code, REDIRECT_URL, 'Basic ' + authString);
+            return;
+        } catch (error) {
+            throw new Error(`Error to get token: ${error.message}`);
+        }
+    }
+
+    async function getTokens(code, credentials, redirectUrl) {
+        try {
+            const response = await fetch(TOKEN_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': credentials,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    code: code,
+                    grant_type: 'authorization_code',
+                    redirect_uri: redirectUrl
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error_description || 'Failed to get tokens');
+            }
+
+            const data = await response.json();
+            return {
+                access_token: data.access_token,
+                refresh_token: data.refresh_token,
+                expires_in: data.expires_in
+            };
+        } catch (error) {
+            console.error('Error getting tokens:', error);
+            throw error;
+        }
+    }
+
+    async function showInformationModal(code, redirectUrl, credentials) {
         informationModal.style.display = 'block';
         informationModal.classList.add('fade-in');
         const modalMessage = informationModal.querySelector('.modal-message');
@@ -148,16 +194,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   --data redirect_uri=${redirectUrl}
 </code></pre>
             </div>
+            <div style="margin-top:16px; text-align:center;">
+                <button id="generateTokensBtn" style="padding:8px 16px;font-size:14px;border-radius:4px;border:none;background:#2a64a7;color:white;cursor:pointer;">Gerar Tokens</button>
+            </div>
         `;
 
         const copyBtn = document.getElementById('copyCurlBtn');
         const curlCode = document.getElementById('curlCode');
+        const generateTokensBtn = document.getElementById('generateTokensBtn');
+
         if (copyBtn && curlCode) {
             copyBtn.addEventListener('click', () => {
                 const text = curlCode.innerText;
                 navigator.clipboard.writeText(text);
                 copyBtn.textContent = 'Copiado!';
                 setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
+            });
+        }
+
+        if (generateTokensBtn) {
+            generateTokensBtn.addEventListener('click', async () => {
+                try {
+                    generateTokensBtn.disabled = true;
+                    generateTokensBtn.textContent = 'Gerando...';
+                    const tokens = await getTokens(code, credentials, redirectUrl);
+                    modalMessage.innerHTML = `
+                        <div style="text-align:left;"><strong>Access Token:</strong> <span style="word-break:break-all">${tokens.access_token}</span></div>
+                        <div style="text-align:left;"></br><strong>Refresh Token:</strong> <span style="word-break:break-all">${tokens.refresh_token}</span></div>
+                        <div style="text-align:left;"></br><strong>Expires In:</strong> <span style="word-break:break-all">${tokens.expires_in} seconds</span></div>
+                        <div style="margin-top:16px; text-align:center;">
+                            <button id="backToInfoBtn" style="padding:8px 16px;font-size:14px;border-radius:4px;border:none;background:#2a64a7;color:white;cursor:pointer;">Voltar</button>
+                        </div>
+                    `;
+
+                    const backToInfoBtn = document.getElementById('backToInfoBtn');
+                    if (backToInfoBtn) {
+                        backToInfoBtn.addEventListener('click', () => {
+                            showInformationModal(code, redirectUrl, 'Basic ' + btoa(`${credentials.client_id}:${credentials.client_secret}`));
+                        });
+                    }
+                } catch (error) {
+                    modalMessage.innerHTML = `
+                        <div style="color: red; text-align: center; margin: 20px 0;">
+                            Erro ao gerar tokens: ${error.message}
+                        </div>
+                        <div style="margin-top:16px; text-align:center;">
+                            <button id="backToInfoBtn" style="padding:8px 16px;font-size:14px;border-radius:4px;border:none;background:#2a64a7;color:white;cursor:pointer;">Voltar</button>
+                        </div>
+                    `;
+                    const backToInfoBtn = document.getElementById('backToInfoBtn');
+                    if (backToInfoBtn) {
+                        backToInfoBtn.addEventListener('click', () => {
+                            showInformationModal(code, redirectUrl, 'Basic ' + btoa(`${credentials.client_id}:${credentials.client_secret}`));
+                        });
+                    }
+                }
             });
         }
     }
@@ -200,24 +291,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         appFrame.src = '';
     }
 
-    async function getInfoToAcess(code) {
-        try {
-            const credentials = await chrome.storage.local.get(['client_id', 'client_secret']);
-            if (!credentials.client_id || !credentials.client_secret) {
-                throw new Error('Client ID or Client Secret not found');
-            }
-            const authString = btoa(`${credentials.client_id}:${credentials.client_secret}`);
-            showInformationModal(code, REDIRECT_URL, 'Basic ' + authString);
-            return;
-        } catch (error) {
-            throw new Error(`Error to get token: ${error.message}`);
-        }
-    }
-
     const logoutInsideModalButton = document.getElementById('logoutInsideModal');
     if (logoutInsideModalButton) {
         logoutInsideModalButton.addEventListener('click', async () => {
-
             informationModal.style.display = 'none';
         });
     }
