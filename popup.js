@@ -1,7 +1,5 @@
 //Extension for testing api conta azul
 //Altere os valores de CLIENT_ID e CLIENT_SECRET com os valores do seu app do contaazul
-const CLIENT_ID = 'SEU_CLIENT_ID';
-const CLIENT_SECRET = 'SEU_CLIENT_SECRET';
 const REDIRECT_URL = chrome.identity.getRedirectURL();
 const AUTH_URL = 'https://auth.contaazul.com/login';
 const TOKEN_URL = 'https://auth.contaazul.com/oauth2/token';
@@ -9,7 +7,6 @@ const TOKEN_URL = 'https://auth.contaazul.com/oauth2/token';
 const logoutButton = document.getElementById('logoutButton');
 
 document.addEventListener('DOMContentLoaded', async () => {
-
     const loginContaAzulButton = document.getElementById('loginContaAzul');
     const loginContainer = document.getElementById('loginContainer');
     const appContainer = document.getElementById('appContainer');
@@ -17,6 +14,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loadingContainer = document.getElementById('loadingContainer');
     const confirmLogoutButton = document.getElementById('confirmLogout');
     const informationModal = document.getElementById('informationModal');
+    const clientIdInput = document.getElementById('clientId');
+    const clientSecretInput = document.getElementById('clientSecret');
+    const redirectUrlDisplay = document.getElementById('redirectUrlDisplay');
+    const copyRedirectUrlButton = document.getElementById('copyRedirectUrl');
+
+    // Display redirect URL
+    redirectUrlDisplay.textContent = REDIRECT_URL;
+
+    // Copy redirect URL functionality
+    copyRedirectUrlButton.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(REDIRECT_URL);
+            copyRedirectUrlButton.textContent = 'Copiado!';
+            setTimeout(() => {
+                copyRedirectUrlButton.textContent = 'Copiar';
+            }, 1500);
+        } catch (error) {
+            console.error('Error copying to clipboard:', error);
+            alert('Erro ao copiar a URL');
+        }
+    });
+
+    // Save credentials when they change
+    clientIdInput.addEventListener('change', async () => {
+        await chrome.storage.local.set({ client_id: clientIdInput.value });
+    });
+
+    clientSecretInput.addEventListener('change', async () => {
+        await chrome.storage.local.set({ client_secret: clientSecretInput.value });
+    });
+
+    // Load saved credentials if they exist
+    const savedCredentials = await chrome.storage.local.get(['client_id', 'client_secret']);
+    if (savedCredentials.client_id) {
+        clientIdInput.value = savedCredentials.client_id;
+    }
+    if (savedCredentials.client_secret) {
+        clientSecretInput.value = savedCredentials.client_secret;
+    }
 
     function showLoading() {
         loadingContainer.style.display = 'flex';
@@ -43,7 +79,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             hideLoading();
             showLoginButton();
-            alert(REDIRECT_URL);
         }
     } catch (error) {
         hideLoading();
@@ -51,11 +86,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     loginContaAzulButton.addEventListener('click', async () => {
+        const clientId = clientIdInput.value.trim();
+        const clientSecret = clientSecretInput.value.trim();
+
+        if (!clientId || !clientSecret) {
+            alert('Por favor, preencha o Client ID e Client Secret');
+            return;
+        }
+
         try {
+            // Save credentials
+            await chrome.storage.local.set({
+                client_id: clientId,
+                client_secret: clientSecret
+            });
+
             const authUrl = new URL(AUTH_URL);
             const params = {
                 response_type: 'code',
-                client_id: CLIENT_ID,
+                client_id: clientId,
                 redirect_uri: REDIRECT_URL,
                 state: 'HGSRDFWf45A53sdfKef422',
                 scope: 'openid profile aws.cognito.signin.user.admin'
@@ -153,8 +202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function getInfoToAcess(code) {
         try {
-            const credentials = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
-            showInformationModal(code, REDIRECT_URL, 'Basic ' + credentials);
+            const credentials = await chrome.storage.local.get(['client_id', 'client_secret']);
+            if (!credentials.client_id || !credentials.client_secret) {
+                throw new Error('Client ID or Client Secret not found');
+            }
+            const authString = btoa(`${credentials.client_id}:${credentials.client_secret}`);
+            showInformationModal(code, REDIRECT_URL, 'Basic ' + authString);
             return;
         } catch (error) {
             throw new Error(`Error to get token: ${error.message}`);

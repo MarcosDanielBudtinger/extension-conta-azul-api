@@ -196,6 +196,23 @@
         <div class="loading-text">Carregando...</div>
     </div>
     <div id="loginContainer">
+        <div style="display: flex; flex-direction: column; gap: 12px; width: 300px; margin-bottom: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="clientId" style="color: white; font-size: 14px;">Client ID:</label>
+                <input type="text" id="clientId" placeholder="Enter your Client ID" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="clientSecret" style="color: white; font-size: 14px;">Client Secret:</label>
+                <input type="password" id="clientSecret" placeholder="Enter your Client Secret" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="color: white; font-size: 14px;">Redirect URL:</label>
+                    <button id="copyRedirectUrl" style="padding: 4px 8px; font-size: 12px; background: #2a64a7; color: white; border: none; border-radius: 4px; cursor: pointer;">Copiar</button>
+                </div>
+                <div id="redirectUrlDisplay" style="background: rgba(255, 255, 255, 0.1); padding: 8px; border-radius: 4px; color: white; font-size: 12px; word-break: break-all;"></div>
+            </div>
+        </div>
         <button id="loginContaAzul" class="login-button">
             <img src="/ca.ico" alt="Conta Azul">
             Entrar com Conta Azul
